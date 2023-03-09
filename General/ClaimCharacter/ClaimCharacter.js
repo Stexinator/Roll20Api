@@ -34,6 +34,11 @@ const ClaimCharacter = (() => {
             return;
         }
 
+        let args = msg.content.split(/\s+/);
+         if(args.shift() !== '!claim'){
+            return;
+         }
+
         let who = (getObj('player', msg.playerid)).get('_displayname');
 
         if (msg.selected == undefined) {
@@ -48,19 +53,15 @@ const ClaimCharacter = (() => {
 
         let token = getObj("graphic", msg.selected[0]._id)
         let character = getObj("character", token.get("represents"))
-        let args = msg.content.split(/\s+/);
 
-        if(args.shift() === '!claim'){
-
-            if( args[0] === 'release') {
-                release(character)
-                sendChat('ClaimCharacter',`${who} released ${character.get("name")}`);
-                return;
-            }
-
-            claim(character, msg.playerid)
-            sendChat('ClaimCharacter',`${who} claimed ${character.get("name")}`);
+        if( args[0] === 'release') {
+            release(character)
+            sendChat('ClaimCharacter',`${who} released ${character.get("name")}`);
+            return;
         }
+
+        claim(character, msg.playerid)
+        sendChat('ClaimCharacter',`${who} claimed ${character.get("name")}`);
     };
 
 
