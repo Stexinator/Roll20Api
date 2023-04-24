@@ -1,6 +1,7 @@
 const WelcomePackage = (() => {
 
   const CREATE_CHARACTER_CMD = '!welcomePackageCreateCharacter';
+  const CREATE_HANDOUT_CMD = '!welcomePackageCreateHandout';
 
   const CSS = {
     'menu': {
@@ -23,6 +24,7 @@ const WelcomePackage = (() => {
   };
 
   const observers = [];
+  const observersHandout = [];
   let isReady = false;
 
   /**
@@ -34,7 +36,97 @@ const WelcomePackage = (() => {
     if(player.get('_online') && !playerIsGM(player.get('_id'))) {
       createPlayerCharacter(player);
       addCharacterCreateMacro(player);
+      addHandoutCreateMacro(player);
     }
+  }
+
+    /**
+     * Registers a function to be notified when a handout is created
+     * @param {function} func
+     */
+    function onAddHandout(func){
+      if('function' === typeof func){
+        observersHandout.push(func);
+      }
+    }
+
+    /**
+    * Notifies all registered functions when a character is created
+    * @param {Character} character
+    */
+    function notifyAddHandout(handout){
+    observersHandout.forEach((f)=>f(handout));
+    }
+
+    /**
+     * Creates a character creation macro for a player if they don't already
+     * have the macro.
+     * @param {Player} player
+     */
+    function addHandoutCreateMacro(player, name) {
+      let playerId = player.get('_id');
+      let macroName = 'CreateAHandout';
+
+      let macro = findObjs({
+        _type: 'macro',
+        _playerid: playerId,
+        name: macroName
+      })[0];
+
+      if(!macro) {
+        createObj('macro', {
+          _playerid: playerId,
+          name: macroName,
+          action: '!welcomePackageCreateHandout ?{Handout Name:}'
+        });
+      }
+    }
+
+    /**
+   * Creates a character for a player if they don't already have any characters.
+   * @param {Player} player
+   * @param {string} [name] The name of the character. If this is provided,
+   *                        the character will be created regardless of whether
+   *                        the player has a character already.
+   */
+  function createPlayerHandout(player, name) {
+    let playerId = player.get('_id');
+    let who = player.get('_displayname');
+
+    if(!name) {
+        name = `${who}'s handout`;
+    }
+
+    let handout = createObj('handout', {
+        controlledby: playerId,
+        inplayerjournals: playerId,
+        name
+    });
+
+    setTimeout(() => {
+        notifyAddHandout(handout);
+        showHandoutLink(who, handout);
+    }, 1000);
+  }
+
+  /**
+   * Shows a player the link to their new character with a welcoming message.
+   * @param {string} who The player's display name.
+   * @param {Character} character
+   */
+  function showHandoutLink(who, handout) {
+    let menu = new HtmlBuilder('.menu');
+    menu.append('.menuHeader', 'Welcome!');
+    let content = menu.append('.menuBody');
+    content.append('div', 'A blank handout has been created for you: ');
+    content.append('a', handout.get('name'), {
+      href: 'http://journal.roll20.net/handout/' + handout.get('_id'),
+      style: {
+        color: '#a08'
+      }
+    });
+    let html = menu.toString(CSS);
+    sendChat('Welcome Package', '/w ' + who + ' ' + html);
   }
 
   /**
@@ -182,10 +274,19 @@ const WelcomePackage = (() => {
       let name = argv.slice(1).join(' ');
       createPlayerCharacter(player, name);
     }
+
+    if(msg.content.startsWith(CREATE_HANDOUT_CMD)) {
+         let player = getObj('player', playerId);
+         let argv = msg.content.split(' ');
+         let name = argv.slice(1).join(' ');
+         createPlayerHandout(player, name);
+    }
   });
 
   return {
     OnAddCharacter: onAddCharacter,
-    onAddCharacter
+    onAddCharacter,
+    OnAddHandout: onAddHandout,
+    onAddHandout,
   };
 })();
